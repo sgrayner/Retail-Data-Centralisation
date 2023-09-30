@@ -28,7 +28,8 @@ class DatabaseConnector:
     def list_db_tables(self):
         inspector = inspect(self.init_db_engine())
         table_list = inspector.get_table_names()
-        print(table_list)
+        
+        return table_list
 
 
 
