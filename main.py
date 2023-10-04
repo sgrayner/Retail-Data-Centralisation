@@ -73,30 +73,34 @@ for i in range(len(df)):
                 df.loc[i, 'date_of_birth'] = dt.strptime(df.loc[i, 'date_of_birth'], '%Y %B %d').date()
             except ValueError:
                 pass
-
-
-
-
-for i in range(len(df)):
-    if df['country_code'][i] == 'DE':
-        df['phone_number'] = df['phone_number'].str.replace(' ', '', regex=False)
-        df['phone_number'] = df['phone_number'].str.replace('(', '', regex=False)
-        df['phone_number'] = df['phone_number'].str.replace(')', '', regex=False)
+    if df.loc[i, 'phone_number'] == 'GB' or df.loc[i, 'phone_number'] == 'DE':
+        df.loc[i, 'phone_number'] = re.sub('\s', '', df.loc[i, 'phone_number'])
+        df.loc[i, 'phone_number'] = re.sub('\(', '', df.loc[i, 'phone_number'])
+        df.loc[i, 'phone_number'] = re.sub('\)', '', df.loc[i, 'phone_number'])
+    if df.loc[i, 'phone_number'] == 'GB'
+        if df.loc[i, 'phone_number'][:4] == '+440':
+            df.loc[i, 'phone_number'] = '+44(0)' + df.loc[i, 'phone_number'][4:]
+        elif df.loc[i, 'phone_number'][:3] == '+44':
+            df.loc[i, 'phone_number'] = '+44(0)' + df.loc[i, 'phone_number'][3:]
+        else:
+            df.loc[i, 'phone_number'] = '+44(0)' + df.loc[i, 'phone_number'][1:]
+    if df.loc[i, 'phone_number'] == 'DE':
         if df.loc[i, 'phone_number'][:4] != '+490':
             df.loc[i, 'phone_number'] = '+49(0)' + df.loc[i, 'phone_number'][1:]
         if df.loc[i, 'phone_number'][:4] == '+490':
             df.loc[i, 'phone_number'] = '+49(0)' + df.loc[i, 'phone_number'][4:]
+    if df['country_code'][i] == 'US':
+        result = re.sub('001', '+1', df['phone_number'][i])
+        result = re.sub('\.', '-', result)
+        result = re.sub('\)', '-', result)
+        result = re.sub('/', '-', result)
+        result = re.sub('\(', '', result)
+        if '-' not in result:
+            result = result[:3] + '-' + result[3:6] + '-' + result[6:]
+        if result[0:2] != '+1':
+            result = '+1-' + result
 
 
-'''
-lengths = set()
 
 
-for i in range(len(df)):
-    if df['country_code'][i] == 'DE':
-        lengths.add(len(df['phone_number'][i]))
-            
-print(lengths)'''
 
-
-print(df[df['country_code'] == 'DE']['phone_number'].head(30))
