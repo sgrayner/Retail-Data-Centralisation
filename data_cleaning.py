@@ -57,6 +57,7 @@ class DataCleaning:
                 if result[0:2] != '+1':
                     result = '+1-' + result
 
+        conn.upload_to_db(df, 'dim_users', 'sql_creds.yaml')
 
 
 

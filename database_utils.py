@@ -4,14 +4,15 @@ from sqlalchemy import inspect
 
 class DatabaseConnector:
 
-    def read_db_creds(self):
-        with open('db_creds.yaml', 'r') as file:
+    def read_db_creds(self, creds):
+        with open(creds, 'r') as file:
             data = yaml.safe_load(file)
 
         return data
 
-    def init_db_engine(self):
-        data = self.read_db_creds()
+    def init_db_engine(self, creds):
+
+        data = self.read_db_creds(creds)
 
         DATABASE_TYPE = 'postgresql'
         DBAPI = 'psycopg2'
@@ -26,13 +27,13 @@ class DatabaseConnector:
         return engine
 
     def list_db_tables(self):
-        inspector = inspect(self.init_db_engine())
+        inspector = inspect(self.init_db_engine('db_creds.yaml'))
         table_list = inspector.get_table_names()
         
         return table_list
 
-    def upload_to_db(self, dataframe, table):
-        dataframe.to_sql(table, self.init_db_engine(), if_exists='replace')
+    def upload_to_db(self, dataframe, table, creds):
+        dataframe.to_sql(table, self.init_db_engine(creds), if_exists='replace')
 
 
 
