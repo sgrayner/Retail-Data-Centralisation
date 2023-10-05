@@ -6,6 +6,8 @@ from sqlalchemy import text
 import re
 import numpy as np
 from datetime import datetime as dt
+from data_extraction import DataExtractor as de
+from database_utils import DatabaseConnector as dc
 
 class DatabaseConnector:
 
@@ -50,57 +52,61 @@ class DataExtractor:
         return table
 
 
+class DataCleaning:
 
-
-extr = DataExtractor()
-conn = DatabaseConnector()
-df = extr.read_rds_table(conn, conn.list_db_tables()[1])
-
-df = df.replace({'NULL': np.nan})
-df.dropna(how='all', subset=['email_address', 'address', 'phone_number'], inplace=True)
-df = df[~df['email_address'].str.contains('@') == False]
-df['country_code'] = df['country_code'].replace({'GGB':'GB'})
-df.reset_index(inplace=True)
-
-for i in range(len(df)):
-    try:
-        df.loc[i, 'date_of_birth'] = dt.strptime(df.loc[i, 'date_of_birth'], '%B %Y %d').date()
-    except ValueError:
-        try:
-            df.loc[i, 'date_of_birth'] = dt.strptime(df.loc[i, 'date_of_birth'], '%Y/%m/%d').date()
-        except ValueError:
+    def clean_user_data(self):
+        extr = de()
+        conn = dc()
+        df = extr.read_rds_table(conn, conn.list_db_tables()[1])
+        df = df.replace({'NULL': np.nan})
+        df.dropna(how='all', subset=['email_address', 'address', 'phone_number'], inplace=True) # Drop people that we cannot contact
+        df = df[~df['email_address'].str.contains('@') == False]
+        df['country_code'] = df['country_code'].replace({'GGB':'GB'})
+        df.reset_index(inplace=True)
+        for i in range(len(df)):
             try:
-                df.loc[i, 'date_of_birth'] = dt.strptime(df.loc[i, 'date_of_birth'], '%Y %B %d').date()
+                df.loc[i, 'date_of_birth'] = dt.strptime(df.loc[i, 'date_of_birth'], '%B %Y %d').date()
             except ValueError:
-                pass
-    if df.loc[i, 'phone_number'] == 'GB' or df.loc[i, 'phone_number'] == 'DE':
-        df.loc[i, 'phone_number'] = re.sub('\s', '', df.loc[i, 'phone_number'])
-        df.loc[i, 'phone_number'] = re.sub('\(', '', df.loc[i, 'phone_number'])
-        df.loc[i, 'phone_number'] = re.sub('\)', '', df.loc[i, 'phone_number'])
-    if df.loc[i, 'phone_number'] == 'GB'
-        if df.loc[i, 'phone_number'][:4] == '+440':
-            df.loc[i, 'phone_number'] = '+44(0)' + df.loc[i, 'phone_number'][4:]
-        elif df.loc[i, 'phone_number'][:3] == '+44':
-            df.loc[i, 'phone_number'] = '+44(0)' + df.loc[i, 'phone_number'][3:]
-        else:
-            df.loc[i, 'phone_number'] = '+44(0)' + df.loc[i, 'phone_number'][1:]
-    if df.loc[i, 'phone_number'] == 'DE':
-        if df.loc[i, 'phone_number'][:4] != '+490':
-            df.loc[i, 'phone_number'] = '+49(0)' + df.loc[i, 'phone_number'][1:]
-        if df.loc[i, 'phone_number'][:4] == '+490':
-            df.loc[i, 'phone_number'] = '+49(0)' + df.loc[i, 'phone_number'][4:]
-    if df['country_code'][i] == 'US':
-        result = re.sub('001', '+1', df['phone_number'][i])
-        result = re.sub('\.', '-', result)
-        result = re.sub('\)', '-', result)
-        result = re.sub('/', '-', result)
-        result = re.sub('\(', '', result)
-        if '-' not in result:
-            result = result[:3] + '-' + result[3:6] + '-' + result[6:]
-        if result[0:2] != '+1':
-            result = '+1-' + result
+                try:
+                    df.loc[i, 'date_of_birth'] = dt.strptime(df.loc[i, 'date_of_birth'], '%Y/%m/%d').date()
+                except ValueError:
+                    try:
+                        df.loc[i, 'date_of_birth'] = dt.strptime(df.loc[i, 'date_of_birth'], '%Y %B %d').date()
+                    except ValueError:
+                        pass
 
+            if df['country_code'][i] == 'GB':
+                df.loc[i, 'phone_number'] = df.loc[i, 'phone_number'].replace(' ', '')
+                df.loc[i, 'phone_number'] = df.loc[i, 'phone_number'].replace('(', '')
+                df.loc[i, 'phone_number'] = df.loc[i, 'phone_number'].replace(')', '')
+                if df.loc[i, 'phone_number'][:4] == '+440':
+                    df.loc[i, 'phone_number'] = '+44(0)' + df.loc[i, 'phone_number'][4:]
+                elif df.loc[i, 'phone_number'][:3] == '+44':
+                    df.loc[i, 'phone_number'] = '+44(0)' + df.loc[i, 'phone_number'][3:]
+                else:
+                    df.loc[i, 'phone_number'] = '+44(0)' + df.loc[i, 'phone_number'][1:]
+            if df['country_code'][i] == 'DE':
+                df.loc[i, 'phone_number'] = df.loc[i, 'phone_number'].replace(' ', '')
+                df.loc[i, 'phone_number'] = df.loc[i, 'phone_number'].replace('(', '')
+                df.loc[i, 'phone_number'] = df.loc[i, 'phone_number'].replace(')', '')
+                if df.loc[i, 'phone_number'][:4] != '+490':
+                    df.loc[i, 'phone_number'] = '+49(0)' + df.loc[i, 'phone_number'][1:]
+                if df.loc[i, 'phone_number'][:4] == '+490':
+                    df.loc[i, 'phone_number'] = '+49(0)' + df.loc[i, 'phone_number'][4:]
+            if df['country_code'][i] == 'US':
+                result = re.sub('001', '+1', df['phone_number'][i])
+                result = re.sub('\.', '-', result)
+                result = re.sub('\)', '-', result)
+                result = re.sub('/', '-', result)
+                result = re.sub('\(', '', result)
+                if '-' not in result:
+                    result = result[:3] + '-' + result[3:6] + '-' + result[6:]
+                if result[0:2] != '+1':
+                    result = '+1-' + result
+        conn.upload_to_db(df, 'dim_users')
 
+cleaner = DataCleaning()
+cleaner.clean_user_data()
 
 
 
