@@ -15,7 +15,7 @@ class DataCleaning:
         df.dropna(how='all', subset=['email_address', 'address', 'phone_number'], inplace=True) # Drop people that we cannot contact
         df = df[~df['email_address'].str.contains('@') == False]
         df['country_code'] = df['country_code'].replace({'GGB':'GB'})
-        df.reset_index(inplace=True)
+        df.reset_index(drop=True, inplace=True)
         for i in range(len(df)):
             try:
                 df['date_of_birth'][i] = dt.strptime(df['date_of_birth'][i], '%B %Y %d').date()
@@ -56,10 +56,19 @@ class DataCleaning:
                     result = result[:3] + '-' + result[3:6] + '-' + result[6:]
                 if result[0:2] != '+1':
                     result = '+1-' + result
+    
 
         conn.upload_to_db(df, 'dim_users', 'sql_creds.yaml')
 
 
+    def clean_card_data(self):
+        extr = de()
+        df = extr.retrieve_pdf_data('https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf')
+        print(df)
+
+cleaner = DataCleaning()
+
+cleaner.clean_card_data()
 
 
 

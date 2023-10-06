@@ -1,3 +1,4 @@
+import tabula
 import pandas as pd
 from sqlalchemy import text
 from database_utils import DatabaseConnector as dc
@@ -11,14 +12,16 @@ class DataExtractor:
                 print(row)
 
     def read_rds_table(self, conn, table):
-        table = pd.read_sql_table(table, conn.init_db_engine(), index_col='index')
+        table = pd.read_sql_table(table, conn.init_db_engine('db_creds.yaml'), index_col='index')
         
         return table
 
-extr = DataExtractor()
-conn = dc()
+    def retrieve_pdf_data(self, link):
+        df = tabula.read_pdf(link)
 
-df = extr.read_rds_table(conn, conn.list_db_tables()[1])
+        return df
+
+extr = DataExtractor()
 
 
 
