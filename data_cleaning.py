@@ -63,12 +63,39 @@ class DataCleaning:
 
     def clean_card_data(self):
         extr = de()
-        df = extr.retrieve_pdf_data('https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf')
-        print(df)
+        conn = dc()
+        df = extr.retrieve_pdf_data('https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf')[0]
+        df.dropna(how='all', inplace=True)
+        df.reset_index(drop=True, inplace=True)
+        for i in range(len(df)):
+            try:
+                df.loc[i, 'date_payment_confirmed'] = dt.strptime(str(df.loc[i, 'date_payment_confirmed']), '%B %Y %d').date()
+            except ValueError:
+                try:
+                    df.loc[i, 'date_payment_confirmed'] = dt.strptime(str(df.loc[i, 'date_payment_confirmed']), '%Y/%m/%d').date()
+                except ValueError:
+                    try:
+                        df.loc[i, 'date_payment_confirmed'] = dt.strptime(str(df.loc[i, 'date_payment_confirmed']), '%Y %B %d').date()
+                    except ValueError:
+                        pass
+        df = df[df['date_payment_confirmed'].str.match(r'\d{4}\-(0[1-9]|1[012])\-(0[1-9]|[12][0-9]|3[01])') == True]
+        df = df[df['card_number'].str.match(r'(\d{9}|\d{11}|\d{12}|\d{13}|\d{14}|\d{15}|\d{16}|\d{19})') == True]
+        df.reset_index(drop=True, inplace=True)
+        
+        conn.upload_to_db(df, 'dim_card_details', 'sql_creds.yaml')
 
 cleaner = DataCleaning()
 
-cleaner.clean_card_data()
+df = cleaner.clean_card_data()
+
+
+
+
+
+
+
+
+
 
 
 
