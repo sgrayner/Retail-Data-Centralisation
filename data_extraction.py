@@ -1,4 +1,6 @@
 import tabula
+import requests
+import json
 import pandas as pd
 from sqlalchemy import text
 from database_utils import DatabaseConnector as dc
@@ -17,11 +19,27 @@ class DataExtractor:
         return table
 
     def retrieve_pdf_data(self, link):
-        df = tabula.read_pdf(link)
+        df = tabula.read_pdf(link, output_format='dataframe', pages='all')
 
         return df
 
-extr = DataExtractor()
+    def list_number_of_stores(self):
+        endpoint = 'https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores'
+        header = {'x-api-key': 'yFBQbwXe9J3sd6zWVAMrK6lcxxr0q1lr2PT6DDMX'}
+        response = requests.get(endpoint, headers=header)
+        return response.text
+
+    def retrieve_store_data(self):
+        header = {'x-api-key': 'yFBQbwXe9J3sd6zWVAMrK6lcxxr0q1lr2PT6DDMX'}
+        data_list = []
+        for i in range(451):
+            endpoint = f'https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{i}'
+            response = requests.get(endpoint, headers=header)
+            data = response.json()
+            data_list.append(data)
+        df = pd.DataFrame(data_list)
+        return df
+
 
 
 

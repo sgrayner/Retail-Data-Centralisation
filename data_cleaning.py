@@ -84,6 +84,29 @@ class DataCleaning:
         
         conn.upload_to_db(df, 'dim_card_details', 'sql_creds.yaml')
 
+    def clean_store_data():
+        extr = de()
+        conn = dc()
+        df = extr.retrieve_store_data()
+        df = df[df['continent'] != 'NULL']
+        df['continent'] = df['continent'].replace({'eeEurope':'Europe'})
+        df['continent'] = df['continent'].replace({'eeAmerica':'America'})
+        df = df[df['continent'].isin(['Europe', 'America'])]
+        df.drop(['index', 'lat'], axis=1, inplace=True)
+        df.reset_index(drop=True, inplace=True)
+        for i in range(len(df)):
+                    try:
+                        df.loc[i, 'opening_date'] = dt.strptime(str(df.loc[i, 'opening_date']), '%B %Y %d').date()
+                    except ValueError:
+                        try:
+                            df.loc[i, 'opening_date'] = dt.strptime(str(df.loc[i, 'opening_date']), '%Y/%m/%d').date()
+                        except ValueError:
+                            try:
+                                df.loc[i, 'opening_date'] = dt.strptime(str(df.loc[i, 'opening_date']), '%Y %B %d').date()
+                            except ValueError:
+                                pass
+        conn.upload_to_db(df, 'dim_store_details', 'sql_creds.yaml')
+
 cleaner = DataCleaning()
 
 df = cleaner.clean_card_data()
