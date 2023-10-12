@@ -155,7 +155,18 @@ class DataCleaning:
         extr = de()
         conn = dc()
         df = extr.read_rds_table(conn, conn.list_db_tables()[2])
+        df = df.drop(['level_0', 'first_name', 'last_name', '1'], axis=1)
 
+        conn.upload_to_db(df, 'orders_table', 'sql_creds.yaml')
+
+
+    def clean_events_data(self):
+        extr = de()
+        conn = dc()
+        df = extr.retrieve_events_data()
+        df = df[df['year'].str.match(r'\d{4}') == True]
+
+        conn.upload_to_db(df, 'dim_date_times', 'sql_creds.yaml')
 cleaner = DataCleaning()
 
 df = cleaner.clean_card_data()

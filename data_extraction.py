@@ -1,6 +1,7 @@
 import tabula
 import requests
 import json
+import boto3
 import pandas as pd
 from sqlalchemy import text
 from database_utils import DatabaseConnector as dc
@@ -40,7 +41,17 @@ class DataExtractor:
         df = pd.DataFrame(data_list)
         return df
 
-
+    def extract_from_s3(self):
+        client = boto3.client('s3')
+        path = 's3://data-handling-public/products.csv'
+        df = pd.read_csv(path)
+        return df
+    
+    def retrieve_events_data():
+        client = boto3.client('s3')
+        path = 'https://data-handling-public.s3.eu-west-1.amazonaws.com/date_details.json'
+        df = pd.read_json(path)
+        return df
 
 
 
