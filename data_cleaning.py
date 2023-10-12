@@ -109,9 +109,8 @@ class DataCleaning:
         conn.upload_to_db(df, 'dim_store_details', 'sql_creds.yaml')
 
     def convert_product_weights(self):
-        client = boto3.client('s3')
-        path = 's3://data-handling-public/products.csv'
-        df = pd.read_csv(path)
+        extr = de()
+        df = extr.extract_from_s3()
         df['weight_check'] = df['weight'].str.contains('x')
         dg = df['weight'][df['weight_check'] == True].str.replace('[xg]', '', regex=True).str.split(expand=True)
         dg['weight'] = dg[0].astype(int) * dg[1].astype(int)
@@ -133,6 +132,12 @@ class DataCleaning:
         kg.loc[:, 'weight'] = kg.loc[:, 'weight'].str.removesuffix('kg')
         df.update(kg)
         df.rename(columns={'weight': 'weight (kg)'}, inplace=True)
+        
+        return df
+
+    def clean_product_data(self):
+        conn = dc()
+        df = self.convert_product_weights()
         df = df.drop('Unnamed: 0', axis=1)
         df.dropna(how='any', inplace=True)
         df = df[~(df['weight (kg)'].str.contains('[a-zA-Z]') == True)]
@@ -140,10 +145,16 @@ class DataCleaning:
         df.rename(columns={'product_price': 'product_price (£)'}, inplace=True)
         df.loc[307, 'date_added'] = '2018-10-22'
         df.loc[1217, 'date_added'] = '2017-09-06'
+        df['product_price (£)'] = df['product_price (£)'].astype(float)
+        df['weight (kg)'] = df['weight (kg)'].astype(float)
 
-        return df
+        conn.upload_to_db(df, 'dim_products', 'sql_creds.yaml')
 
-    def clean_product_data(self):
+
+    def clean_orders_data(self):
+        extr = de()
+        conn = dc()
+        df = extr.read_rds_table(conn, conn.list_db_tables()[2])
 
 cleaner = DataCleaning()
 
