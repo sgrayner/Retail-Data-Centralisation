@@ -1,4 +1,5 @@
 import re
+import boto3
 import pandas as pd
 import numpy as np
 from data_extraction import DataExtractor as de
@@ -84,7 +85,7 @@ class DataCleaning:
         
         conn.upload_to_db(df, 'dim_card_details', 'sql_creds.yaml')
 
-    def clean_store_data():
+    def clean_store_data(self):
         extr = de()
         conn = dc()
         df = extr.retrieve_store_data()
@@ -106,6 +107,43 @@ class DataCleaning:
                             except ValueError:
                                 pass
         conn.upload_to_db(df, 'dim_store_details', 'sql_creds.yaml')
+
+    def convert_product_weights(self):
+        client = boto3.client('s3')
+        path = 's3://data-handling-public/products.csv'
+        df = pd.read_csv(path)
+        df['weight_check'] = df['weight'].str.contains('x')
+        dg = df['weight'][df['weight_check'] == True].str.replace('[xg]', '', regex=True).str.split(expand=True)
+        dg['weight'] = dg[0].astype(int) * dg[1].astype(int)
+        dg['weight'] = dg['weight'].astype(str) + 'g'
+        dg = dg.drop([0, 1], axis=1)
+        df.update(dg)
+        df = df.drop(['weight_check'], axis=1)
+        grams = df[df.loc[:, 'weight'].str.contains('([^k][g])|[ml]') == True]
+        grams.loc[:, 'weight'] = grams.loc[:, 'weight'].str.removesuffix('g')
+        grams.loc[:, 'weight'] = grams.loc[:, 'weight'].str.removesuffix('g .')
+        grams.loc[:, 'weight'] = grams.loc[:, 'weight'].str.removesuffix('ml')
+        grams.loc[:, 'weight'] = grams.loc[:, 'weight'].astype(float) / 1000
+        df.update(grams)
+        ounces = df[df.loc[:, 'weight'].str.contains('oz') == True]
+        ounces.loc[:, 'weight'] = ounces.loc[:, 'weight'].str.removesuffix('oz')
+        ounces.loc[:, 'weight'] = round(ounces.loc[:, 'weight'].astype(float) / 35.274, 2)
+        df.update(ounces)
+        kg = df[df.loc[:, 'weight'].str.contains('[k]') == True]
+        kg.loc[:, 'weight'] = kg.loc[:, 'weight'].str.removesuffix('kg')
+        df.update(kg)
+        df.rename(columns={'weight': 'weight (kg)'}, inplace=True)
+        df = df.drop('Unnamed: 0', axis=1)
+        df.dropna(how='any', inplace=True)
+        df = df[~(df['weight (kg)'].str.contains('[a-zA-Z]') == True)]
+        df.loc[:, 'product_price'] = df.loc[:, 'product_price'].str.replace('£', '')
+        df.rename(columns={'product_price': 'product_price (£)'}, inplace=True)
+        df.loc[307, 'date_added'] = '2018-10-22'
+        df.loc[1217, 'date_added'] = '2017-09-06'
+
+        return df
+
+    def clean_product_data(self):
 
 cleaner = DataCleaning()
 
