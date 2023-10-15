@@ -95,10 +95,10 @@ class DataCleaning:
         df = df[df['removed'].isin(['Still_avaliable', 'Removed']) == True]
         df.loc[:, 'product_price'] = df.loc[:, 'product_price'].str.replace('£', '')
         df.rename(columns={'product_price': 'product_price (£)'}, inplace=True)
-        df.loc[307, 'date_added'] = '2018-10-22'                                        #Do these still work? Safer to use pd.to_datetime?
-        df.loc[1217, 'date_added'] = '2017-09-06'                                       # Then reset index afterwards
+        df['date_added'] = pd.to_datetime(df['date_added']).dt.date
         df['product_price (£)'] = df['product_price (£)'].astype(float)
         df['weight (kg)'] = df['weight (kg)'].astype(float)
+        df.reset_index(drop=True, inplace=True)
 
         conn.upload_to_db(df, 'dim_products', 'sql_creds.yaml')
 
