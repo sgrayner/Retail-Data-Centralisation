@@ -35,17 +35,8 @@ class DataCleaning:
         US_numbers = US_numbers.str[:3] + '-' + US_numbers.str[3:6] + '-' + US_numbers.str[6:]
         US_numbers = '+1-' + US_numbers.astype(str)
         df.update(US_numbers)
-        for i in range(len(df)):
-            try:
-                df['date_of_birth'][i] = dt.strptime(df['date_of_birth'][i], '%B %Y %d').date()
-            except ValueError:
-                try:
-                    df['date_of_birth'][i] = dt.strptime(df['date_of_birth'][i], '%Y/%m/%d').date()
-                except ValueError:
-                    try:
-                        df['date_of_birth'][i] = dt.strptime(df['date_of_birth'][i], '%Y %B %d').date()
-                    except ValueError:
-                        pass
+        df['date_of_birth'] = pd.to_datetime(df['date_of_birth']).dt.date
+        df['join_date'] = pd.to_datetime(df['join_date']).dt.date
     
         conn.upload_to_db(df, 'dim_users', 'sql_creds.yaml')
 
@@ -54,21 +45,9 @@ class DataCleaning:
         extr = de()
         conn = dc()
         df = extr.retrieve_pdf_data('https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf')[0]
-        df.dropna(how='all', inplace=True)
-        df.reset_index(drop=True, inplace=True)
-        for i in range(len(df)):
-            try:
-                df.loc[i, 'date_payment_confirmed'] = dt.strptime(str(df.loc[i, 'date_payment_confirmed']), '%B %Y %d').date()
-            except ValueError:
-                try:
-                    df.loc[i, 'date_payment_confirmed'] = dt.strptime(str(df.loc[i, 'date_payment_confirmed']), '%Y/%m/%d').date()
-                except ValueError:
-                    try:
-                        df.loc[i, 'date_payment_confirmed'] = dt.strptime(str(df.loc[i, 'date_payment_confirmed']), '%Y %B %d').date()
-                    except ValueError:
-                        pass
-        df = df[df['date_payment_confirmed'].str.match(r'\d{4}\-(0[1-9]|1[012])\-(0[1-9]|[12][0-9]|3[01])') == True]            #?
-        df = df[df['card_number'].str.match(r'(\d{9}|\d{11}|\d{12}|\d{13}|\d{14}|\d{15}|\d{16}|\d{19})') == True]
+        df = df[df['expiry_date'].str.match(r'(0[1-9]|1[012])/\d{2}') == True]
+        df['date_payment_confirmed'] = pd.to_datetime(df['date_payment_confirmed']).dt.date
+        df = df[df['card_number'].str.contains(r'\?') == False]
         df.reset_index(drop=True, inplace=True)
         
         conn.upload_to_db(df, 'dim_card_details', 'sql_creds.yaml')
@@ -77,23 +56,12 @@ class DataCleaning:
         extr = de()
         conn = dc()
         df = extr.retrieve_store_data()
-        df = df[df['continent'] != 'NULL']                                             #change to df.dropna(how='all', inplace=True) ?
         df['continent'] = df['continent'].replace({'eeEurope':'Europe'})
         df['continent'] = df['continent'].replace({'eeAmerica':'America'})
         df = df[df['continent'].isin(['Europe', 'America'])]
-        df.drop(['index', 'lat'], axis=1, inplace=True)                             #move above df.dropna(how='all', inplace=True) ?
+        df.drop(['index', 'lat'], axis=1, inplace=True)                            
         df.reset_index(drop=True, inplace=True)
-        for i in range(len(df)):
-                    try:
-                        df.loc[i, 'opening_date'] = dt.strptime(str(df.loc[i, 'opening_date']), '%B %Y %d').date()
-                    except ValueError:
-                        try:
-                            df.loc[i, 'opening_date'] = dt.strptime(str(df.loc[i, 'opening_date']), '%Y/%m/%d').date()
-                        except ValueError:
-                            try:
-                                df.loc[i, 'opening_date'] = dt.strptime(str(df.loc[i, 'opening_date']), '%Y %B %d').date()
-                            except ValueError:
-                                pass
+        df['opening_date'] = pd.to_datetime(df['opening_date']).dt.date
         conn.upload_to_db(df, 'dim_store_details', 'sql_creds.yaml')
 
     def convert_product_weights(self):
@@ -103,7 +71,6 @@ class DataCleaning:
         dg = df['weight'][df['weight_check'] == True].str.replace('[xg]', '', regex=True).str.split(expand=True)
         dg['weight'] = dg[0].astype(int) * dg[1].astype(int)
         dg['weight'] = dg['weight'].astype(str) + 'g'
-        dg = dg.drop([0, 1], axis=1)
         df.update(dg)
         df = df.drop(['weight_check'], axis=1)
         grams = df[df.loc[:, 'weight'].str.contains('([^k][g])|[ml]') == True]
@@ -116,9 +83,7 @@ class DataCleaning:
         ounces.loc[:, 'weight'] = ounces.loc[:, 'weight'].str.removesuffix('oz')
         ounces.loc[:, 'weight'] = round(ounces.loc[:, 'weight'].astype(float) / 35.274, 2)
         df.update(ounces)
-        kg = df[df.loc[:, 'weight'].str.contains('[k]') == True]
-        kg.loc[:, 'weight'] = kg.loc[:, 'weight'].str.removesuffix('kg')
-        df.update(kg)
+        df.loc[:, 'weight'] = df.loc[:, 'weight'].str.removesuffix('kg')
         df.rename(columns={'weight': 'weight (kg)'}, inplace=True)
         
         return df
@@ -127,12 +92,11 @@ class DataCleaning:
         conn = dc()
         df = self.convert_product_weights()
         df = df.drop('Unnamed: 0', axis=1)
-        df.dropna(how='any', inplace=True)
-        df = df[~(df['weight (kg)'].str.contains('[a-zA-Z]') == True)]
+        df = df[df['removed'].isin(['Still_avaliable', 'Removed']) == True]
         df.loc[:, 'product_price'] = df.loc[:, 'product_price'].str.replace('£', '')
         df.rename(columns={'product_price': 'product_price (£)'}, inplace=True)
-        df.loc[307, 'date_added'] = '2018-10-22'
-        df.loc[1217, 'date_added'] = '2017-09-06'
+        df.loc[307, 'date_added'] = '2018-10-22'                                        #Do these still work? Safer to use pd.to_datetime?
+        df.loc[1217, 'date_added'] = '2017-09-06'                                       # Then reset index afterwards
         df['product_price (£)'] = df['product_price (£)'].astype(float)
         df['weight (kg)'] = df['weight (kg)'].astype(float)
 
