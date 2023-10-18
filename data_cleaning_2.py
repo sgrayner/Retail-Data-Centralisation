@@ -1,14 +1,18 @@
-import re
-import boto3
-import pandas as pd
 import numpy as np
+import pandas as pd
+from datetime import datetime as dt
+
 from data_extraction import DataExtractor as de
 from database_utils import DatabaseConnector as dc
-from datetime import datetime as dt
+
 
 class DataCleaning:
 
     def clean_user_data(self):
+        '''
+        This function extracts, cleans and uploads user data from the RDS database
+        to an SQL database.
+        '''
         extr = de()
         conn = dc()
         df = extr.read_rds_table(conn, conn.list_db_tables()[1])
@@ -42,9 +46,13 @@ class DataCleaning:
 
 
     def clean_card_data(self):
+        '''
+        This function extracts, cleans and uploads payment card data from the RDS database
+        to an SQL database.
+        '''
         extr = de()
         conn = dc()
-        df = extr.retrieve_pdf_data('https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf')[0]
+        df = extr.retrieve_card_data('https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf')[0]
         df = df[df['expiry_date'].str.match(r'(0[1-9]|1[012])/\d{2}') == True]
         df['date_payment_confirmed'] = pd.to_datetime(df['date_payment_confirmed']).dt.date
         df = df[df['card_number'].str.contains(r'\?') == False]
@@ -53,20 +61,31 @@ class DataCleaning:
         conn.upload_to_db(df, 'dim_card_details', 'sql_creds.yaml')
 
     def clean_store_data(self):
+        '''
+        This function extracts, cleans and uploads store data from the RDS database
+        to an SQL database.
+        '''
         extr = de()
         conn = dc()
         df = extr.retrieve_store_data()
         df['continent'] = df['continent'].replace({'eeEurope':'Europe'})
         df['continent'] = df['continent'].replace({'eeAmerica':'America'})
         df = df[df['continent'].isin(['Europe', 'America'])]
+        df['staff_numbers'] = df['staff_numbers'].str.replace('\D', '', regex=True)
         df.drop(['index', 'lat'], axis=1, inplace=True)                            
         df.reset_index(drop=True, inplace=True)
         df['opening_date'] = pd.to_datetime(df['opening_date']).dt.date
         conn.upload_to_db(df, 'dim_store_details', 'sql_creds.yaml')
 
-    def convert_product_weights(self):
+    def convert_product_weights():
+        '''
+        This function extracts and cleans the 'weight' column of product data.
+
+        Returns:
+            DataFrame: The product data with the cleaned 'weight' column.
+        '''
         extr = de()
-        df = extr.extract_from_s3()
+        df = extr.retrieve_product_data()
         df['weight_check'] = df['weight'].str.contains('x')
         dg = df['weight'][df['weight_check'] == True].str.replace('[xg]', '', regex=True).str.split(expand=True)
         dg['weight'] = dg[0].astype(int) * dg[1].astype(int)
@@ -77,33 +96,43 @@ class DataCleaning:
         grams.loc[:, 'weight'] = grams.loc[:, 'weight'].str.removesuffix('g')
         grams.loc[:, 'weight'] = grams.loc[:, 'weight'].str.removesuffix('g .')
         grams.loc[:, 'weight'] = grams.loc[:, 'weight'].str.removesuffix('ml')
-        grams.loc[:, 'weight'] = grams.loc[:, 'weight'].astype(float) / 1000
+        grams.loc[:, 'weight'] = pd.to_numeric(grams.loc[:, 'weight']) / 1000
         df.update(grams)
         ounces = df[df.loc[:, 'weight'].str.contains('oz') == True]
         ounces.loc[:, 'weight'] = ounces.loc[:, 'weight'].str.removesuffix('oz')
         ounces.loc[:, 'weight'] = round(ounces.loc[:, 'weight'].astype(float) / 35.274, 2)
         df.update(ounces)
         df.loc[:, 'weight'] = df.loc[:, 'weight'].str.removesuffix('kg')
-        df.rename(columns={'weight': 'weight (kg)'}, inplace=True)
+        df.rename(columns={'weight': 'weight_kg'}, inplace=True)
         
         return df
 
     def clean_product_data(self):
+        '''
+        This function cleans and uploads product data from the RDS database
+        to an SQL database.
+        '''
         conn = dc()
-        df = self.convert_product_weights()
+        df = DataCleaning.convert_product_weights()
         df = df.drop('Unnamed: 0', axis=1)
         df = df[df['removed'].isin(['Still_avaliable', 'Removed']) == True]
         df.loc[:, 'product_price'] = df.loc[:, 'product_price'].str.replace('£', '')
-        df.rename(columns={'product_price': 'product_price (£)'}, inplace=True)
+        df.rename(columns={'product_price': 'product_price_£'}, inplace=True)
         df['date_added'] = pd.to_datetime(df['date_added']).dt.date
-        df['product_price (£)'] = df['product_price (£)'].astype(float)
-        df['weight (kg)'] = df['weight (kg)'].astype(float)
+        df['product_price_£'] = df['product_price_£'].astype(float)
+        df['weight_kg'] = df['weight_kg'].astype(float)
         df.reset_index(drop=True, inplace=True)
+
+        print(df['weight_kg'].head())
 
         conn.upload_to_db(df, 'dim_products', 'sql_creds.yaml')
 
 
     def clean_orders_data(self):
+        '''
+        This function extracts, cleans and uploads orders data from the RDS database
+        to an SQL database.
+        '''
         extr = de()
         conn = dc()
         df = extr.read_rds_table(conn, conn.list_db_tables()[2])
@@ -113,6 +142,10 @@ class DataCleaning:
 
 
     def clean_events_data(self):
+        '''
+        This function extracts, cleans and uploads events data from the RDS database
+        to an SQL database.
+        '''
         extr = de()
         conn = dc()
         df = extr.retrieve_events_data()
@@ -121,8 +154,12 @@ class DataCleaning:
         conn.upload_to_db(df, 'dim_date_times', 'sql_creds.yaml')
 cleaner = DataCleaning()
 
-cleaner.clean_user_data()
-
+#cleaner.clean_user_data()
+#cleaner.clean_card_data()
+#cleaner.clean_store_data()
+cleaner.clean_product_data()
+#cleaner.clean_orders_data()
+#cleaner.clean_events_data()
 
 
 
