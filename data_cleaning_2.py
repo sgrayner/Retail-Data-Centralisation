@@ -102,7 +102,9 @@ class DataCleaning:
         ounces.loc[:, 'weight'] = ounces.loc[:, 'weight'].str.removesuffix('oz')
         ounces.loc[:, 'weight'] = round(ounces.loc[:, 'weight'].astype(float) / 35.274, 2)
         df.update(ounces)
-        df.loc[:, 'weight'] = df.loc[:, 'weight'].str.removesuffix('kg')
+        kg = df[df.loc[:, 'weight'].str.contains('kg') == True]
+        kg.loc[:, 'weight'] = kg.loc[:, 'weight'].str.removesuffix('kg')
+        df.update(kg)
         df.rename(columns={'weight': 'weight_kg'}, inplace=True)
         
         return df
@@ -122,9 +124,7 @@ class DataCleaning:
         df['product_price_£'] = df['product_price_£'].astype(float)
         df['weight_kg'] = df['weight_kg'].astype(float)
         df.reset_index(drop=True, inplace=True)
-
-        print(df['weight_kg'].head())
-
+        print(df['weight_kg'])
         conn.upload_to_db(df, 'dim_products', 'sql_creds.yaml')
 
 
@@ -150,6 +150,7 @@ class DataCleaning:
         conn = dc()
         df = extr.retrieve_events_data()
         df = df[df['year'].str.match(r'\d{4}') == True]
+        df.reset_index(drop=True, inplace=True)
 
         conn.upload_to_db(df, 'dim_date_times', 'sql_creds.yaml')
 cleaner = DataCleaning()
@@ -157,7 +158,7 @@ cleaner = DataCleaning()
 #cleaner.clean_user_data()
 #cleaner.clean_card_data()
 #cleaner.clean_store_data()
-cleaner.clean_product_data()
+#cleaner.clean_product_data()
 #cleaner.clean_orders_data()
 #cleaner.clean_events_data()
 
