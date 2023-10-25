@@ -41,6 +41,7 @@ class DataCleaning:
         df.update(US_numbers)
         df['date_of_birth'] = pd.to_datetime(df['date_of_birth']).dt.date
         df['join_date'] = pd.to_datetime(df['join_date']).dt.date
+        df['users_key'] = [number for number in range(len(df))]
     
         conn.upload_to_db(df, 'dim_users', 'sql_creds.yaml')
 
@@ -52,11 +53,13 @@ class DataCleaning:
         '''
         extr = de()
         conn = dc()
-        df = extr.retrieve_card_data('https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf')[0]
+        df = extr.retrieve_card_data('https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf')
         df = df[df['expiry_date'].str.match(r'(0[1-9]|1[012])/\d{2}') == True]
+        df['card_number'] = df['card_number'].astype(str).str.replace('?', '', regex=False)
         df['date_payment_confirmed'] = pd.to_datetime(df['date_payment_confirmed']).dt.date
-        df = df[df['card_number'].str.contains(r'\?') == False]
+        df['card_number'] = df['card_number'].astype(np.int64)
         df.reset_index(drop=True, inplace=True)
+        df['cards_key'] = [number for number in range(len(df))]
         
         conn.upload_to_db(df, 'dim_card_details', 'sql_creds.yaml')
 
@@ -75,6 +78,7 @@ class DataCleaning:
         df.drop(['index', 'lat'], axis=1, inplace=True)                            
         df.reset_index(drop=True, inplace=True)
         df['opening_date'] = pd.to_datetime(df['opening_date']).dt.date
+        df['store_key'] = [number for number in range(len(df))]
         conn.upload_to_db(df, 'dim_store_details', 'sql_creds.yaml')
 
     def convert_product_weights():
@@ -124,7 +128,7 @@ class DataCleaning:
         df['product_price_£'] = df['product_price_£'].astype(float)
         df['weight_kg'] = df['weight_kg'].astype(float)
         df.reset_index(drop=True, inplace=True)
-        print(df['weight_kg'])
+        df['products_key'] = [number for number in range(len(df))]
         conn.upload_to_db(df, 'dim_products', 'sql_creds.yaml')
 
 
@@ -151,6 +155,7 @@ class DataCleaning:
         df = extr.retrieve_events_data()
         df = df[df['year'].str.match(r'\d{4}') == True]
         df.reset_index(drop=True, inplace=True)
+        df['date_key'] = [number for number in range(len(df))]
 
         conn.upload_to_db(df, 'dim_date_times', 'sql_creds.yaml')
 cleaner = DataCleaning()
@@ -158,7 +163,7 @@ cleaner = DataCleaning()
 #cleaner.clean_user_data()
 #cleaner.clean_card_data()
 #cleaner.clean_store_data()
-#cleaner.clean_product_data()
+cleaner.clean_product_data()
 #cleaner.clean_orders_data()
 #cleaner.clean_events_data()
 

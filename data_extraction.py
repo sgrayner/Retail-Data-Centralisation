@@ -35,8 +35,8 @@ class DataExtractor:
         Returns:
             DataFrame: the extracted data as a DataFrame.
         '''
-        df = tabula.read_pdf(link, output_format='dataframe', pages='all')
-
+        df = tabula.read_pdf(link, stream=False, pages='all')
+        df = pd.concat(df)
         return df
 
     def list_number_of_stores(self):
@@ -53,7 +53,7 @@ class DataExtractor:
 
     def retrieve_store_data(self):
         '''
-        This function reads data from an RDS database.
+        This function retrieves data from an RDS database.
         
         Args:
             conn: Instance of a connection to an RDS database.
@@ -73,19 +73,29 @@ class DataExtractor:
         return df
 
     def retrieve_product_data(self):
+        '''
+        This function retrieves product data from an S3 bucket.
+        
+        Returns:
+            DataFrame: the extracted data as a DataFrame.
+        '''
         client = boto3.client('s3')
         path = 's3://data-handling-public/products.csv'
         df = pd.read_csv(path)
         return df
     
-    def retrieve_events_data():
+    def retrieve_events_data(self):
+        '''
+        This function retrieves event data from an S3 bucket.
+        
+        Returns:
+            DataFrame: the extracted data as a DataFrame.
+        '''
         client = boto3.client('s3')
         path = 'https://data-handling-public.s3.eu-west-1.amazonaws.com/date_details.json'
         df = pd.read_json(path)
         return df
 
 
-extr = DataExtractor()
 
-print(extr.list_number_of_stores())
 
