@@ -24,7 +24,7 @@ class DatabaseConnector:
 
     def init_db_engine(self, creds):
         '''
-        Initiates an SQLalchemy database engine.
+        This function initiates an SQLalchemy database engine.
         
         Args:
             creds (.yaml file): Login credentials of the database.
@@ -48,7 +48,7 @@ class DatabaseConnector:
 
     def list_db_tables(self):
         '''
-        Lists the tables in the database.
+        This function lists the tables in the database.
         
         Returns:
             List of table names.
@@ -60,7 +60,7 @@ class DatabaseConnector:
 
     def upload_to_db(self, dataframe, table, creds):
         '''
-        Uploads data to a table in the SQL database.
+        This function uploads data to a table in the SQL database.
         
         Args:
             creds (.yaml file): Login credentials of the database.
