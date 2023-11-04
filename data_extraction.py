@@ -1,31 +1,30 @@
 import tabula
 import requests
-import json
-import boto3
 import pandas as pd
 from sqlalchemy import text
 from database_utils import DatabaseConnector as dc
+
 
 class DataExtractor:
     '''
     This class is used to extract data from various sources.
     '''
-    def read_rds_table(self, conn, table):
+
+
+    def read_rds_table(table):
         '''
         This function reads data from an RDS database.
         
         Args:
-            conn: Instance of a connection to an RDS database.
             table: Name of table to extract data from.
             
         Returns:
             DataFrame: the extracted data as a DataFrame.
         '''
-        table = pd.read_sql_table(table, conn.init_db_engine('db_creds.yaml'), index_col='index')
-        
+        table = pd.read_sql_table(table, dc.init_db_engine('db_creds.yaml'), index_col='index')
         return table
-
-    def retrieve_card_data(self, link):
+    
+    def retrieve_card_data(link):
         '''
         This function reads data from a PDF file.
         
@@ -39,7 +38,7 @@ class DataExtractor:
         df = pd.concat(df)
         return df
 
-    def list_number_of_stores(self):
+    def __list_number_of_stores():
         '''
         This function retrieves information from an API on the number of stores.
             
@@ -51,14 +50,10 @@ class DataExtractor:
         response = requests.get(endpoint, headers=header)
         return response.text
 
-    def retrieve_store_data(self):
+    def retrieve_store_data():
         '''
         This function retrieves data from an RDS database.
         
-        Args:
-            conn: Instance of a connection to an RDS database.
-            table: Name of table to extract data from.
-            
         Returns:
             DataFrame: the extracted data as a DataFrame.
         '''
@@ -72,30 +67,24 @@ class DataExtractor:
         df = pd.DataFrame(data_list)
         return df
 
-    def retrieve_product_data(self):
+    def retrieve_product_data():
         '''
         This function retrieves product data from an S3 bucket.
         
         Returns:
             DataFrame: the extracted data as a DataFrame.
         '''
-        client = boto3.client('s3')
         path = 's3://data-handling-public/products.csv'
         df = pd.read_csv(path)
         return df
     
-    def retrieve_events_data(self):
+    def retrieve_events_data():
         '''
         This function retrieves event data from an S3 bucket.
         
         Returns:
             DataFrame: the extracted data as a DataFrame.
         '''
-        client = boto3.client('s3')
         path = 'https://data-handling-public.s3.eu-west-1.amazonaws.com/date_details.json'
         df = pd.read_json(path)
         return df
-
-
-
-
