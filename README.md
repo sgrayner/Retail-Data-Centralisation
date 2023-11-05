@@ -1,15 +1,15 @@
-### Data_centralisation_project
+## Data_centralisation_project
 
-## Project description
+### Project description
 This project extracts retail data from an AWS RDS database, cleans the data in Python and then queries the data in PostgreSQL to find information that would be useful to the retail company.
 
-## Installation instructions
+### Installation instructions
 
 Clone the repository by running the following command inside a terminal:
 
 git clone https://github.com/sgrayner/Retail-Data-Centralisation.git
 
-## Usage instructions
+### Usage instructions
 
 - The data_cleaning.py file is the main file that runs the ETL process on the data tables. Run this file to clean the tables and upload them to the SQL server.
 - The database_utils.py file contains the functionality to connect to the RDS database and the SQL database. It is imported into the data_cleaning.py file.
@@ -18,7 +18,7 @@ git clone https://github.com/sgrayner/Retail-Data-Centralisation.git
 - The milestone_3.sql and milestone_4.sql files contain the questions that I have answered on the database as well as the SQL code that runs the queries.
 - Use SQL to query the database.
 
-## File structure of the project
+### File structure of the project
 
 C:\Retail-Data-Centralisation
    - README.md
