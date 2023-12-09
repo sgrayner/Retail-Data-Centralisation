@@ -9,9 +9,8 @@ class DataExtractor:
     '''
     This class is used to extract data from various sources.
     '''
-
-
     def read_rds_table(table):
+        engine = dc('db_creds.yaml')
         '''
         This function reads data from an RDS database.
         
@@ -21,7 +20,7 @@ class DataExtractor:
         Returns:
             DataFrame: the extracted data as a DataFrame.
         '''
-        table = pd.read_sql_table(table, dc.init_db_engine('db_creds.yaml'), index_col='index')
+        table = pd.read_sql_table(table, engine.init_db_engine(), index_col='index')
         return table
     
     def retrieve_card_data(link):
@@ -38,17 +37,18 @@ class DataExtractor:
         df = pd.concat(df)
         return df
 
-    def __list_number_of_stores():
+    def list_number_of_stores():
         '''
         This function retrieves information from an API on the number of stores.
             
         Returns:
             dict: the number of stores.
         '''
-        endpoint = 'https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores'
-        header = {'x-api-key': 'yFBQbwXe9J3sd6zWVAMrK6lcxxr0q1lr2PT6DDMX'}
+        data = dc('config.yaml').read_db_creds()
+        endpoint = data['NUMBER_STORES_ENDPOINT']
+        header = {data['HEADER_KEY']: data['HEADER_VALUE']}
         response = requests.get(endpoint, headers=header)
-        return response.text
+        return response.json()['number_stores']
 
     def retrieve_store_data():
         '''
@@ -57,13 +57,14 @@ class DataExtractor:
         Returns:
             DataFrame: the extracted data as a DataFrame.
         '''
-        header = {'x-api-key': 'yFBQbwXe9J3sd6zWVAMrK6lcxxr0q1lr2PT6DDMX'}
+        data = dc('config.yaml').read_db_creds()
+        header = {data['HEADER_KEY']: data['HEADER_VALUE']}
         data_list = []
-        for i in range(451):
-            endpoint = f'https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{i}'
+        for i in range(DataExtractor.list_number_of_stores()):
+            endpoint = data['STORES_ENDPOINT'] + f'{i}'
             response = requests.get(endpoint, headers=header)
-            data = response.json()
-            data_list.append(data)
+            response = response.json()
+            data_list.append(response)
         df = pd.DataFrame(data_list)
         return df
 
@@ -74,7 +75,8 @@ class DataExtractor:
         Returns:
             DataFrame: the extracted data as a DataFrame.
         '''
-        path = 's3://data-handling-public/products.csv'
+        data = dc('config.yaml').read_db_creds()
+        path = data['PRODUCTS_PATH']
         df = pd.read_csv(path)
         return df
     
@@ -85,6 +87,9 @@ class DataExtractor:
         Returns:
             DataFrame: the extracted data as a DataFrame.
         '''
-        path = 'https://data-handling-public.s3.eu-west-1.amazonaws.com/date_details.json'
+        data = dc('config.yaml').read_db_creds()
+        path = data['EVENTS_PATH']
         df = pd.read_json(path)
         return df
+
+print(DataExtractor.retrieve_events_data())
