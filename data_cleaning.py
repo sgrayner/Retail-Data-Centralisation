@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+
+import data_transforms as dt
 from data_extraction import DataExtractor as de
 from database_utils import DatabaseConnector as dc
 
@@ -21,24 +23,7 @@ class DataCleaning:
         df = df[~df['email_address'].str.contains('@') == False]
         df['country_code'] = df['country_code'].replace({'GGB':'GB'})
         df.reset_index(drop=True, inplace=True)
-        df.loc[:, 'phone_number'].replace(to_replace=['\(', '\)', '\s', '/', '\.', '\-'], value=['', '', '', '', '', ''], regex=True, inplace=True)
-        GB_numbers = df[df['country_code'] == 'GB'].loc[:, 'phone_number']
-        GB_numbers = GB_numbers.str.removeprefix('+440')
-        GB_numbers = GB_numbers.str.removeprefix('+44')
-        GB_numbers = GB_numbers.str.removeprefix('0')
-        GB_numbers = '+44(0)' + GB_numbers.astype(str)
-        df.update(GB_numbers)
-        DE_numbers = df[df['country_code'] == 'DE'].loc[:, 'phone_number']
-        DE_numbers = DE_numbers.str.removeprefix('+490')
-        DE_numbers = DE_numbers.str.removeprefix('0')
-        DE_numbers = '+49(0)' + DE_numbers.astype(str)
-        df.update(DE_numbers)
-        US_numbers = df[df['country_code'] == 'US'].loc[:, 'phone_number']
-        US_numbers = US_numbers.str.removeprefix('001')
-        US_numbers = US_numbers.str.removeprefix('+1')
-        US_numbers = US_numbers.str[:3] + '-' + US_numbers.str[3:6] + '-' + US_numbers.str[6:]
-        US_numbers = '+1-' + US_numbers.astype(str)
-        df.update(US_numbers)
+        df = dt.clean_phone_numbers(df)
         df['date_of_birth'] = pd.to_datetime(df['date_of_birth']).dt.date
         df['join_date'] = pd.to_datetime(df['join_date']).dt.date
         dc.upload_to_db(df, 'dim_users', 'sql_creds.yaml')
@@ -49,7 +34,8 @@ class DataCleaning:
         This function extracts, cleans and uploads payment card data from the RDS database
         to an SQL database.
         '''
-        df = de.retrieve_card_data('https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf')
+        data = dc('config.yaml').read_db_creds()
+        df = de.retrieve_card_data(data['CARD_DATA'])
         # This regex expression matches every expiry date of the format mm/yy
         df = df[df['expiry_date'].str.match(r'(0[1-9]|1[012])/\d{2}') == True]
         df['card_number'] = df['card_number'].astype(str).str.replace('?', '', regex=False)
@@ -73,45 +59,15 @@ class DataCleaning:
         df.reset_index(drop=True, inplace=True)
         df['opening_date'] = pd.to_datetime(df['opening_date']).dt.date
         dc.upload_to_db(df, 'dim_store_details', 'sql_creds.yaml')
-
-    @staticmethod
-    def __convert_product_weights(column):
-        '''
-        This function extracts and cleans a given weight 'column'.
-
-        Returns:
-            DataFrame: The product data with the cleaned weight column.
-        '''
-        df = de.retrieve_product_data()
-        df[f'{column}_check'] = df[column].str.contains('x')
-        dg = df[column][df[f'{column}_check'] == True].str.replace('[xg]', '', regex=True).str.split(expand=True)
-        dg[column] = dg[0].astype(int) * dg[1].astype(int)
-        dg[column] = dg[column].astype(str) + 'g'
-        df.update(dg)
-        df = df.drop([f'{column}_check'], axis=1)
-        grams = df[df.loc[:, column].str.contains('([^k][g])|[ml]') == True]
-        grams.loc[:, column] = grams.loc[:, column].str.removesuffix('g')
-        grams.loc[:, column] = grams.loc[:, column].str.removesuffix('g .')
-        grams.loc[:, column] = grams.loc[:, column].str.removesuffix('ml')
-        grams.loc[:, column] = pd.to_numeric(grams.loc[:, column]) / 1000
-        df.update(grams)
-        ounces = df[df.loc[:, column].str.contains('oz') == True]
-        ounces.loc[:, column] = ounces.loc[:, column].str.removesuffix('oz')
-        ounces.loc[:, column] = round(ounces.loc[:, column].astype(float) / 35.274, 2)
-        df.update(ounces)
-        kg = df[df.loc[:, column].str.contains('kg') == True]
-        kg.loc[:, column] = kg.loc[:, column].str.removesuffix('kg')
-        df.update(kg)
-        df.rename(columns={column: f'{column}_kg'}, inplace=True)
-        return df
-
+    
     @staticmethod
     def clean_product_data():
         '''
         This function cleans and uploads product data from the RDS database
         to an SQL database.
         '''
-        df = DataCleaning.__convert_product_weights()
+        df = de.retrieve_product_data()
+        df = dt.convert_product_weights(df, 'weight')
         df = df.drop('Unnamed: 0', axis=1)
         df = df[df['removed'].isin(['Still_avaliable', 'Removed']) == True]
         df.loc[:, 'product_price'] = df.loc[:, 'product_price'].str.replace('£', '')

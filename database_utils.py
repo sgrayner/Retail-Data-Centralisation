@@ -1,4 +1,5 @@
 import yaml
+import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy import inspect
 
@@ -14,9 +15,6 @@ class DatabaseConnector:
         '''
         This function is used to read and return credentials of a database.
 
-        Args:
-            creds (.yaml file): Login credentials of the database.
-
         Returns:
             data (DataFrame): The data from the database.
         '''
@@ -27,14 +25,11 @@ class DatabaseConnector:
     def init_db_engine(self):
         '''
         This function initiates an SQLalchemy database engine.
-        
-        Args:
-            creds (.yaml file): Login credentials of the database.
             
         Returns:
             engine: An SQLalchemy engine.
         '''
-        data = self.read_db_creds(self.creds)
+        data = self.read_db_creds()
         DATABASE_TYPE = 'postgresql'
         DBAPI = 'psycopg2'
         HOST = data['HOST']
@@ -56,15 +51,14 @@ class DatabaseConnector:
         table_list = inspector.get_table_names()
         return table_list
 
-    def upload_to_db(self, dataframe, table):
+    def upload_to_db(self, dataframe: pd.DataFrame, table: str):
         '''
         This function uploads data to a table in the SQL database.
         
         Args:
             dataframe (DataFrame): The data to upload.
             table (SQL table): The name of the table to store the data.
-            creds (.yaml file): Login credentials of the database.
         '''
-        dataframe.to_sql(table, self.init_db_engine(self.creds), if_exists='replace')
+        dataframe.to_sql(table, self.init_db_engine(), if_exists='replace')
 
 print(DatabaseConnector('config.yaml').read_db_creds()['STORES_ENDPOINT'])

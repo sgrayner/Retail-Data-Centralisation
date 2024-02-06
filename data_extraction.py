@@ -92,4 +92,4 @@ class DataExtractor:
         df = pd.read_json(path)
         return df
 
-print(DataExtractor.retrieve_events_data())
+print(DataExtractor.retrieve_product_data().columns)
