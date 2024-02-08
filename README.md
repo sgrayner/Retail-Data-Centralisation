@@ -62,6 +62,8 @@ git clone https://github.com/sgrayner/Retail-Data-Centralisation.git
 
 ## Creating the database in pgadmin4
 
+
+
 ## Data cleaning transformations
 
 ## SQL database
