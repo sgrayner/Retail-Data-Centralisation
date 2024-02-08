@@ -60,9 +60,11 @@ git clone https://github.com/sgrayner/Retail-Data-Centralisation.git
 3. Run the SQL commands in the database_setup.sql file to finalise the database (correcting column types and creating keys).
 4. Either run the queries in the database_queries.sql file, or feel free to query the database to extract your own insights!
 
-## Creating the database in pgadmin4
+## Creating the SQL database
 
-
+1. Install pgadmin4. See link:
+2. Setup a new database like so (pictures)
+3. Save your database credentials in a yaml file and save it as **sql_creds.yaml** in the same directory as your cloned repository.
 
 ## Data cleaning transformations
 
