@@ -53,20 +53,41 @@ git clone https://github.com/sgrayner/Retail-Data-Centralisation.git
 **From an API**
 - **store_details**. Contains columns: 'address', 'logitude', 'lat', 'locality', 'store_code', 'staff_numbers', 'opening_date', 'store_type', 'latitude', 'country_code', 'continent'.
 
-## Usage instructions
+## Data extraction
 
-1. Setup a SQL database to store the data. (See below section 'Creating the database in pgadmin4').
-2. Run the data_cleaning.py file to extract, clean and transfer the data from the various sources into tables in the SQL database.
-3. Run the SQL commands in the database_setup.sql file to finalise the database (correcting column types and creating keys).
-4. Either run the queries in the database_queries.sql file, or feel free to query the database to extract your own insights!
+These are the python functions used in extracting the data from the data sources.
+ 
+- To extract data from Amazon RDS (for the **legacy_users** data and **orders_table** data:
+```
+pd.read_sql_table(table, conn.init_db_engine(), index_col='index')
+```
+where ```conn.init_db_engine()``` initialises a SQLalchemy engine that connects to the SQL database.
 
-## Creating the SQL database
+- To extract data from **card_details.pdf**:
+```
+df = tabula.read_pdf(link, stream=False, pages='all')
+df = pd.concat(df)
+```
 
-1. Install pgadmin4. See link:
-2. Setup a new database like so (pictures)
-3. Save your database credentials in a yaml file and save it as **sql_creds.yaml** in the same directory as your cloned repository.
+- To extract data from **products.csv** and **date_details.json**:
+```
+pd.read_csv(path)
+pd.read_json(path)
+```
+
+- To extract data from **store_details**:
+```
+for i in range(DataExtractor.list_number_of_stores()):
+    endpoint = data['STORES_ENDPOINT'] + f'{i}'
+    response = requests.get(endpoint, headers=header)
+    response = response.json()
+    data_list.append(response)
+df = pd.DataFrame(data_list)
+```
 
 ## Data cleaning transformations
+
+
 
 ## SQL database
 
