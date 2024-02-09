@@ -85,9 +85,29 @@ for i in range(DataExtractor.list_number_of_stores()):
 df = pd.DataFrame(data_list)
 ```
 
-## Data cleaning transformations
+## Data cleaning steps
 
+**clean_user_data()**:
+- drop records with null values in 'email_address', 'address' and 'phone_number'
+- drop records with 'email_address' not containing '@'
+- replace 'GGB' with 'GB' in 'country_code' values
+- string methods .replace, .removeprefix and concatenation to make phone_number values into a consistent format.
+- convert the 'date_of_birth' and 'join_date' columns to date type.
 
+**clean_card_data()**:
+- drop records with 'expiry_date' not of the format mm/yy
+- remove '?' characters from 'card_number' values
+- convert 'date_payment_confirmed' to date type.
+- convert 'card_number' to int64 type.
+
+**clean_store_data**:
+- removed 'ee' characters from 'continent' values.
+- filtered out erroneous values of 'continent'.
+- removed records with non-numerical values for 'staff_numbers'.
+- dropped the'index' and 'lat' columns.
+- converted 'opening_date' to date type.
+
+**clean_product_data**:
 
 ## SQL database
 
