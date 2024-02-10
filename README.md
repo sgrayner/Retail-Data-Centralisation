@@ -95,20 +95,53 @@ df = pd.DataFrame(data_list)
 - convert the 'date_of_birth' and 'join_date' columns to date type.
 
 **clean_card_data()**:
-- drop records with 'expiry_date' not of the format mm/yy
+- removed records with erroneous values in the 'expiry_date' column.
 - remove '?' characters from 'card_number' values
 - convert 'date_payment_confirmed' to date type.
 - convert 'card_number' to int64 type.
 
-**clean_store_data**:
+**clean_store_data()**:
 - removed 'ee' characters from 'continent' values.
 - filtered out erroneous values of 'continent'.
 - removed records with non-numerical values for 'staff_numbers'.
 - dropped the'index' and 'lat' columns.
 - converted 'opening_date' to date type.
 
-**clean_product_data**:
+**clean_product_data()**:
+- removed the characters 'x' and 'g' from 'weight' values of the form 3 x 4g, then multipled the two numbers together and concatenated 'g' to the end of the string.
+- remove 'g' and 'ml' suffixes from 'weight' values and convert the values to kg.
+- remove 'oz' suffix from 'weight' values and convert the values to kg.
+- renamed 'weight' column to 'weight_kg'.
+- dropped 'Unnamed: 0' column.
+- removed erroneous values from the 'removed' column.
+- removed '£' character from 'product_price' values and renamed column to 'product_price_£'.
+- converted 'date_added' to date type and 'product_price_£' and 'weight_kg' to float type.
+
+**clean_orders_data()**:
+- dropped 'level_0', 'first_name', 'last_name', '1' columns.
+
+**clean_events_data**:
+- removed records with erroneous values in the 'year' column.
 
 ## SQL database
+
+### Upload to SQL database
+
+At the end of each of the cleaning functions in data_cleaning.py, the cleaned dataframe is uploaded to the SQL database with the line:
+```
+dc('sql_creds.yaml').upload_to_db(df, <table name>)
+```
+where the \<table name\> is the name of the corresponding table in the SQL database.
+
+### SQL database structure
+
+We create a star-schema SQL database in pgadmin4, with **orders_table** as the fact table. After the cleaned dataframes are uploaded to the database, we set the data types of all the columns and establish the primary and foreign keys.
+
+**orders_table**: index, date_uuid, user_uuid, card_number, store_code, product_code, product_quantity, cards_key, date_key, products_key, store_key, users_key
+**dim_users**: index, first_name, last_name, date_of_birth, company, email_address, address, country, country_code, phone_number, join_date, user_uuid (PK)
+**dim_card_details**: index, card_number, expiry_date, card_provider, date_payment_confirmed, cards_key (PK)
+**dim_store_details**: index, address, longitude, locality, store_code, staff_numbers, opening_date, store_type, latitude, country_code, continent, store_key (PK)
+**dim_products**: index, product_name, product_price_£, weight_kg, category, EAN, date_added, uuid, still_available, product_code, products_key (PK), weight_class
+**dim_date_times**: index, timestamp, month, year, day, time_period, date_uuid, date_key (PK)
 
 ## SQL queries
