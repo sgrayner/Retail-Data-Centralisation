@@ -1,29 +1,147 @@
-## Data_centralisation_project
+# Multinational Retail Data Centralisation Project
 
-### Project description
-This project extracts retail data from an AWS RDS database and an S3 bucket, cleans the data in Python and then queries the data in PostgreSQL to find information that would be useful to a retail company.
+## Project description
+This project extracts retail data from an AWS RDS database and an S3 bucket, cleans the data in Python and then queries the data in PostgreSQL to extract business insights that would be useful to a retail company.
 
-### Installation instructions
+## Installation instructions
 
 Clone the repository by running the following command inside a terminal:
 ```
 git clone https://github.com/sgrayner/Retail-Data-Centralisation.git
 ```
-### Usage instructions
 
-- The data_cleaning.py file is the main file that runs the ETL process on the data tables. **Run this file to clean the tables and upload them to the SQL server.**
-- The database_utils.py file contains the functionality to connect to the data sources and the SQL database. It is imported into the data_cleaning.py file.
-- The data_extraction.py contains the functionality to extract data from the data sources. It is imported into the data_cleaning.py file.
-- The SQL database, named 'sales_data' contains tables on users, payment card details, store data, product data, product orders, and order times.
-- The milestone_3.sql and milestone_4.sql files contain the questions that I have answered on the database as well as the SQL code that runs the queries.
-- Use SQL to query the database.
+## Python libraries used
 
-### File structure of the project
+- numpy
+- pandas
+- sqlalchemy
+- tabula
+- requests
+- yaml
 
-C:\Retail-Data-Centralisation
-   - README.md
-   - data_cleaning.py
-   - data_extraction.py
-   - database_utils.py
-   - milestone_3.sql
-   - milestone_4.sql
+## Github repository structure
+
+```
+├── data_cleaning.py
+│── data_extraction.py 
+├── data_transforms.py
+├── database_queries.sql
+├── database_setup.sql
+├── database_utils.py
+```
+
+## File descriptions
+
+- **database_utils.py** - Contains functions that create connections to the various data sources, as well as upload data to the SQL database.
+- **data_extraction.py** - Contains functions that extract data from the data sources and return them as pandas dataframes.
+- **data_cleaning.py** - Contains functions that clean the data and upload it to the SQL database.
+- **data_transforms.py** - Contains functions called in the data_cleaning.py file to perform longer cleaning transformations on certain data columns.
+- **database_setup.sql** - Contains SQL queries that set column types and create primary and foreign keys in the database.
+- **database_queries.sql** - Contains SQL queries that extract business intelligence from the database.
+
+## Data sources
+
+**From Amazon RDS**
+- **legacy_users**. Contains columns: 'first_name', 'last_name', 'date_of_birth', 'company', 'email_address', 'address', 'country', 'country_code', 'phone_number', 'join_date', 'user_uuid'.
+- **orders_table**. Contains columns: 'level_0', 'date_uuid', 'first_name', 'last_name', 'user_uuid', 'card_number', 'store_code', 'product_code', '1', 'product_quantity'.
+
+**From Amazon S3**
+- **card_details.pdf**. Contains columns: 'card_number', 'expiry_date', 'card_provider', 'date_payment_confirmed'.
+- **products.csv**. Contains columns: 'Unnamed: 0', 'product_name', 'product_price', 'weight', 'category', 'EAN', 'date_added', 'uuid', 'removed', 'product_code'.
+- **date_details.json**. Contains columns: 'timestamp', 'month', 'year', 'day', 'time_period', 'date_uuid'.
+
+**From an API**
+- **store_details**. Contains columns: 'address', 'logitude', 'lat', 'locality', 'store_code', 'staff_numbers', 'opening_date', 'store_type', 'latitude', 'country_code', 'continent'.
+
+## Data extraction
+
+These are the python functions used in extracting the data from the data sources.
+ 
+- To extract data from Amazon RDS (for the **legacy_users** data and **orders_table** data:
+```
+pd.read_sql_table(table, conn.init_db_engine(), index_col='index')
+```
+where ```conn.init_db_engine()``` initialises a SQLalchemy engine that connects to the SQL database.
+
+- To extract data from **card_details.pdf**:
+```
+df = tabula.read_pdf(link, stream=False, pages='all')
+df = pd.concat(df)
+```
+
+- To extract data from **products.csv** and **date_details.json**:
+```
+pd.read_csv(path)
+pd.read_json(path)
+```
+
+- To extract data from **store_details**:
+```
+for i in range(DataExtractor.list_number_of_stores()):
+    endpoint = data['STORES_ENDPOINT'] + f'{i}'
+    response = requests.get(endpoint, headers=header)
+    response = response.json()
+    data_list.append(response)
+df = pd.DataFrame(data_list)
+```
+
+## Data cleaning steps
+
+**clean_user_data()**:
+- drop records with null values in 'email_address', 'address' and 'phone_number'
+- drop records with 'email_address' not containing '@'
+- replace 'GGB' with 'GB' in 'country_code' values
+- string methods .replace, .removeprefix and concatenation to make phone_number values into a consistent format.
+- convert the 'date_of_birth' and 'join_date' columns to date type.
+
+**clean_card_data()**:
+- removed records with erroneous values in the 'expiry_date' column.
+- remove '?' characters from 'card_number' values
+- convert 'date_payment_confirmed' to date type.
+- convert 'card_number' to int64 type.
+
+**clean_store_data()**:
+- removed 'ee' characters from 'continent' values.
+- filtered out erroneous values of 'continent'.
+- removed records with non-numerical values for 'staff_numbers'.
+- dropped the'index' and 'lat' columns.
+- converted 'opening_date' to date type.
+
+**clean_product_data()**:
+- removed the characters 'x' and 'g' from 'weight' values of the form 3 x 4g, then multipled the two numbers together and concatenated 'g' to the end of the string.
+- remove 'g' and 'ml' suffixes from 'weight' values and convert the values to kg.
+- remove 'oz' suffix from 'weight' values and convert the values to kg.
+- renamed 'weight' column to 'weight_kg'.
+- dropped 'Unnamed: 0' column.
+- removed erroneous values from the 'removed' column.
+- removed '£' character from 'product_price' values and renamed column to 'product_price_£'.
+- converted 'date_added' to date type and 'product_price_£' and 'weight_kg' to float type.
+
+**clean_orders_data()**:
+- dropped 'level_0', 'first_name', 'last_name', '1' columns.
+
+**clean_events_data**:
+- removed records with erroneous values in the 'year' column.
+
+## SQL database
+
+### Upload to SQL database
+
+At the end of each of the cleaning functions in data_cleaning.py, the cleaned dataframe is uploaded to the SQL database with the line:
+```
+dc('sql_creds.yaml').upload_to_db(df, <table name>)
+```
+where the \<table name\> is the name of the corresponding table in the SQL database.
+
+### SQL database structure
+
+We create a star-schema SQL database in pgadmin4, with **orders_table** as the fact table. After the cleaned dataframes are uploaded to the database, we set the data types of all the columns and establish the primary and foreign keys.
+
+**orders_table**: index, date_uuid, user_uuid, card_number, store_code, product_code, product_quantity, cards_key, date_key, products_key, store_key, users_key
+**dim_users**: index, first_name, last_name, date_of_birth, company, email_address, address, country, country_code, phone_number, join_date, user_uuid (PK)
+**dim_card_details**: index, card_number, expiry_date, card_provider, date_payment_confirmed, cards_key (PK)
+**dim_store_details**: index, address, longitude, locality, store_code, staff_numbers, opening_date, store_type, latitude, country_code, continent, store_key (PK)
+**dim_products**: index, product_name, product_price_£, weight_kg, category, EAN, date_added, uuid, still_available, product_code, products_key (PK), weight_class
+**dim_date_times**: index, timestamp, month, year, day, time_period, date_uuid, date_key (PK)
+
+## SQL queries
