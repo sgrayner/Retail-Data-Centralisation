@@ -22,6 +22,9 @@ git clone https://github.com/sgrayner/Retail-Data-Centralisation.git
 ## Github repository structure
 
 ```
+├── images
+│   ├── database.png
+├── README.md
 ├── data_cleaning.py
 │── data_extraction.py 
 ├── data_transforms.py
@@ -135,13 +138,27 @@ where the \<table name\> is the name of the corresponding table in the SQL datab
 
 ### SQL database structure
 
-We create a star-schema SQL database in pgadmin4, with **orders_table** as the fact table. After the cleaned dataframes are uploaded to the database, we set the data types of all the columns and establish the primary and foreign keys.
+We create a star-schema SQL database in pgadmin4, with **orders_table** as the fact table. After the cleaned dataframes are uploaded to the database, we set the data types of all the columns and establish the primary and foreign keys. The code to configure this is in the database_setup.sql file.
 
-**orders_table**: index, date_uuid, user_uuid, card_number, store_code, product_code, product_quantity, cards_key, date_key, products_key, store_key, users_key
-**dim_users**: index, first_name, last_name, date_of_birth, company, email_address, address, country, country_code, phone_number, join_date, user_uuid (PK)
-**dim_card_details**: index, card_number, expiry_date, card_provider, date_payment_confirmed, cards_key (PK)
-**dim_store_details**: index, address, longitude, locality, store_code, staff_numbers, opening_date, store_type, latitude, country_code, continent, store_key (PK)
-**dim_products**: index, product_name, product_price_£, weight_kg, category, EAN, date_added, uuid, still_available, product_code, products_key (PK), weight_class
-**dim_date_times**: index, timestamp, month, year, day, time_period, date_uuid, date_key (PK)
+<img align="right" src="https://github.com/sgrayner/Retail-Data-Centralisation/blob/master/images/database.png" alt="Navigation bar" width="200"/>
+
+- **orders_table**: index, date_uuid, user_uuid, card_number, store_code, product_code, product_quantity, cards_key, date_key, products_key, store_key, users_key
+- **dim_users**: index, first_name, last_name, date_of_birth, company, email_address, address, country, country_code, phone_number, join_date, user_uuid (PK)
+- **dim_card_details**: index, card_number (PK), expiry_date, card_provider, date_payment_confirmed, cards_key
+- **dim_store_details**: index, address, longitude, locality, store_code (PK), staff_numbers, opening_date, store_type, latitude, country_code, continent, store_key
+- **dim_products**: index, product_name, product_price_£, weight_kg, category, EAN, date_added, uuid, still_available, product_code (PK), products_key, weight_class
+- **dim_date_times**: index, timestamp, month, year, day, time_period, date_uuid (PK), date_key
 
 ## SQL queries
+
+Once the database is built, we analyse the data to extract the following business insights. The code to extract the data is in the database_queries.sql file.
+
+1. How many stores are operating in each country?
+2. Which locations currently have the most stores?
+3. Which months produce the highest amount from sales typically?
+4. How many sales are made online and offline?
+5. What percentage of sales come through each type of store?
+6. Which month in each year produced the highest cost of sales?
+7. What is our staff headcount?
+8. Which German store type is selling the most?
+9. How quickly is the company making sales?
